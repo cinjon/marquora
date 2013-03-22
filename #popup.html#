@@ -1,0 +1,500 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+	<style>
+	.round {
+	  -moz-border-radius:    10px;
+	  -webkit-border-radius: 10px;
+	  border-radius:         10px;
+	}
+	
+	body {
+ 	  width: 380px;
+	  height: 360px;
+	  overflow-x:hidden;
+	}
+
+	#container {
+		width: inherit;
+		display: block;
+		height: inherit;
+		overflow-x: inherit;
+/*		border-top: 1px solid;*/
+	}
+	
+	#line {
+		border-bottom: 1px solid;
+		margin-top: 35px;
+		width: 348px;
+		margin-left: 2px;
+	}
+	
+	#header {
+		width: 360px;
+		background-color: #505759;
+		color: #B9BBBC;
+		font-family: sans-serif;
+/*		rgba(84, 82, 112, .5);*/
+	}
+
+	a.nav {
+		float:left;
+		width: 90px;
+		color:inherit;
+		background-color: inherit;
+		font-size: 1.1em;
+	}
+	
+	a.nav:hover {
+		text-decoration: underline; 
+		cursor: pointer;
+		color: red;
+	}
+
+	a.nav:active {
+		text-decoration: none;
+	}
+	
+	a.nav:visited {
+		text-decoration: none;
+	}
+	
+	a.nav:link {
+		text-decoration: none;
+	}
+	
+	a.answerText {
+		width: 291px;
+		margin-left: 5px;
+		float: left;
+		font-size: .85em;
+		margin-top: inherit;
+		margin-bottom: inherit;
+/*		border-top: 1px solid;*/
+	}
+	
+	a.answerText:hover {
+		text-decoration: underline; 
+		color: blue;
+	}
+
+	a.answerText:active {
+		text-decoration: none;
+		color: black;
+	}
+	
+	a.answerText:visited {
+		text-decoration: none;
+	}
+	
+	a.answerText:link {
+		text-decoration: none;
+	}
+	
+	span.answerCount {
+		color: rgba(84, 82, 112, .5);
+		float: left;
+		margin-left: 2px;
+		width: 19px;
+		font-size: .8em;
+		margin-top: 6px;
+	}
+	
+	input.hideBox {
+		float: left;
+		margin-top: 8px;
+		margin-left: 5px;
+	}
+
+	input.bookBox {
+		float: left;
+		margin-top: 8px;
+	}
+	
+	div.question_div {
+		width: 360;
+		clear: both;
+		display: block;
+		margin-top: 5px;
+		margin-bottom: 5px;
+	}
+	
+	#boxTitles {
+		width: 360px;
+		margin-top: 15px;
+	}
+	
+	span.boxNav {
+		float: left;
+		color: rgba(84, 82, 112, .5)
+	}
+	
+	#getquestions {
+		margin-left: 2px; 
+		margin-right: 42px;
+		width: 56px;
+		font-family: inherit;
+	}
+	
+	#getbookmarks {
+		width: 44px;
+		margin-right: 46px; 
+		font-family: inherit;
+	}
+	
+	#gethiddens {
+		width: 54px;
+		margin-right: 36px;
+		font-family: inherit;
+	}
+	
+	#clearButton {
+		margin-left: 4px;
+		width: 68px; 
+		font-family: inherit;
+	}
+	
+	img {
+	  margin:5px;
+	  border:2px solid black;
+	  vertical-align:middle;
+	  width:75px;
+	  height:75px;
+	}
+
+	</style>
+	
+  <script>
+    var logging = true;
+	var display = {};
+	var buttonsMade = false;
+	
+	chrome.tabs.getSelected(null, function(tab) {
+		buttonsMade = true;
+		//makeCloseButton()
+		makeClearButton()
+		makeGetChoiceButton('getquestions')
+		makeGetChoiceButton('getbookmarks')
+		makeGetChoiceButton('gethiddens')
+		paint(display, tab)
+	});
+	
+	function makeCloseButton() {
+		var closeButton = document.getElementById('closeButton')
+		closeButton.addEventListener("click", function() {
+			self.close();
+		});
+	}
+	
+	function makeClearButton() {
+		var clearButton = document.getElementById('clearButton')
+		clearButton.addEventListener("click", function() {
+			clearStorage();
+		});
+	}
+	
+	function makeGetChoiceButton(getChoice) {
+		var choice = getChoice.substring(3)
+		var button = document.getElementById(getChoice)
+		button.addEventListener("click", function() {
+			show(getChoice.substring(3))
+		}, false);
+	}
+	
+	function show(choice) {
+		turnElemNone('questions')
+		turnElemNone('hiddens')
+		turnElemNone('bookmarks')
+		var choiceElem = document.getElementById(choice)
+		choiceElem.style.display = "block"
+		var topElem = document.getElementById("get" + choice)
+		topElem.style.color = "#990000"
+		topElem.style.borderBottom = "1px solid"
+	}
+	
+	function turnElemNone(choice) {
+		var elem = document.getElementById(choice)
+		elem.style.display = "none"
+		var topElem = document.getElementById("get" + choice)
+		topElem.style.color = "inherit"
+		topElem.style.borderBottom = "none"
+	}
+	
+	function paint(display, tab) {
+		chrome.extension.getBackgroundPage().retrieveData(tab, function(data) {
+			display["questions"] = data["questions"]
+			display["bookmarks"] = data["bookmarks"]
+			display["hiddens"]   = data["hiddens"]
+			
+			paintQuestions(display["questions"], 'questions', tab.id)
+			paintQuestions(display["bookmarks"], "bookmarks", tab.id)
+			paintQuestions(display["hiddens"], 'hiddens', tab.id)
+			show("questions")
+		});
+	}
+	
+	function paintQuestions(displaychoice, choice, tabId) {
+		if(displaychoice && displaychoice["routs"] && displaychoice["routs"].length > 0) {
+			hrefs = displaychoice["hrefs"]
+			texts = displaychoice["quest"]
+			routs = displaychoice["routs"]
+			for(var i = 0; i < routs.length; i++) {
+				paintSingleQuestion(makeQuestion(hrefs[i], routs[i], texts[i]), choice, tabId)
+			} 
+		}
+		else {
+			log("cant paint question")
+		}
+	}
+	
+	function paintSingleQuestion(question, choice, tabId) {
+		var container = document.getElementById(choice)		
+		if(question && question["rout"] && container && !document.getElementById(choice + "_" + question["rout"])) {
+			var href = question["href"]
+			var text = question["text"]
+			var rout = question["rout"]
+			var div = document.createElement('div')
+			div.id = choice + "_" + rout;
+			div.className = "question_div"
+			
+			var regex = /\d/
+			var index = 0;
+			while(regex.test(text.substring(index, index+1)) == true) { index = index + 1 }
+			var count = text.substring(0, index)
+			var answer = text.substring(index)
+			if(answer.substring(0, 1) == " ") { answer = answer.substring(1) }
+			
+			var answerAnchor = makeAnchor(href, answer);
+			var countSpan = makeSpan(count)
+			var hideButton = makeHideBox(href, rout, text, tabId, choice);
+			var bookButton = makeBookBox(href, rout, text, tabId);				
+			var storedValues = getValue(rout)
+			div.appendChild(bookButton);
+			div.appendChild(countSpan);
+			div.appendChild(answerAnchor);
+			div.appendChild(hideButton);
+			container.appendChild(div)
+		}
+		else {
+			// log("question: " + question + "\tcontainer: " + container + "\tbad in paintSingleQuestion")
+		}
+	}
+	
+	function tellAllDisplays(rout, hidebook, mark) {
+		tellSingleDisplay(rout, hidebook, mark, "hiddens")
+		tellSingleDisplay(rout, hidebook, mark, "questions")
+		tellSingleDisplay(rout, hidebook, mark, "bookmarks")
+	}
+	
+	function tellSingleDisplay(rout, hidebook, mark, choice) {
+		var buttonElem  = document.getElementById(choice + "_" + rout)
+		if(buttonElem) {
+			var childElems = buttonElem.childNodes;
+			if(hidebook == "hide") {
+				childElems[3].checked = mark
+			}
+			else if(hidebook == "book") {
+				childElems[0].checked = mark
+			}	
+		}
+	}
+	
+	function peelFromEverywhere(rout) {
+		peelSingleQuestion(rout, "hiddens")
+		peelSingleQuestion(rout, "bookmarks")
+		peelSingleQuestion(rout, "questions")
+	}
+	
+	function peelStorage() {
+		resetDiv("bookmarks")
+		resetDiv("hiddens")
+		
+		var div = document.getElementById("questions");
+		var childNodes = div.childNodes;
+		for(var i = 0; i < childNodes.length; i++) {
+			child = childNodes[i]
+			child.childNodes[3].checked = false;
+			child.childNodes[0].checked = false;
+		}
+	}
+	
+	function resetDiv(choice) {
+		var divElem = document.getElementById(choice)
+		var display = divElem.style.display
+		var parentElem = divElem.parentNode
+		parentElem.removeChild(divElem)
+		var newChild = document.createElement('div') 
+		newChild.style.display = display
+		newChild.id = choice
+		parentElem.appendChild(newChild)
+	}
+	
+	function peelSingleQuestion(rout, choice) {
+		var divElem = document.getElementById(choice + '_' + rout)
+		var parent = divElem.parentNode
+		parent.removeChild(divElem)
+	}
+	
+	function makeSpan(count) {
+		var answerCount = document.createElement('span')
+		answerCount.className = "answerCount"
+		answerCount.innerHTML = count
+		return answerCount
+	}
+	
+	function makeAnchor(href, text) {
+		var answerAnchor = document.createElement('a')
+		answerAnchor.href = href;
+		answerAnchor.className = "answerText"
+		answerAnchor.innerHTML = text
+		answerAnchor.addEventListener("click", function() {
+			chrome.tabs.create({url: this.href});
+			// self.close();
+			return(false);
+		});
+		return answerAnchor;
+	}
+	
+	function getChoiceFromValues(values, choice) {
+		if(values && choice) {
+			for(var i = 0; i < values.length; i++) {
+				if(values[i].substring(0,4) == choice) {
+					return values[i]
+				}
+			}
+		}
+		return null;
+	}
+	
+	function makeHideBox(href, rout, text, tabId, choice) {
+		var hideBox = document.createElement('input');
+		hideBox.type = "checkbox";
+		hideBox.className = 'hideBox';
+		var value = getChoiceFromValues(getValue(rout), "hide");
+		if(value) {
+			hideBox.checked = true;
+		}
+		setAttributes(hideBox, href, rout, text)
+		hideBox.addEventListener("click", function() {
+			if(this.checked == false) {
+				mark = false;
+			}
+			else {
+				mark = true;
+			}
+			hide(tabId, this.getAttribute('href'), this.getAttribute('rout'), this.getAttribute('text'), mark);
+			return(false);
+		});
+		return hideBox;
+	}
+	
+	function makeBookBox(href, rout, text, tabId) {
+		var bookBox = document.createElement('input');
+		bookBox.type = "checkbox";
+		bookBox.className = 'bookBox';
+		var value = getChoiceFromValues(getValue(rout), "book");
+		if(value) {
+			bookBox.checked = true;
+		}
+		setAttributes(bookBox, href, rout, text)
+		bookBox.addEventListener("click", function() {
+			if(this.checked == false) {
+				mark = false;
+			}
+			else {
+				mark = true;
+			}
+			book(tabId, this.getAttribute('href'), this.getAttribute('rout'), this.getAttribute('text'), mark);
+			return(false);
+		});
+		return bookBox;
+	}
+	
+	function setAttributes(button, href, rout, text) {
+		button.setAttribute('rout', rout)
+		button.setAttribute('href', href)
+		var index = 0;
+		while(text.substring(index,index+1) != " ") {
+			index = index + 1
+		}
+		text = text.substring(index)
+		button.setAttribute('text', text)
+	}
+	
+	function hide(tabId, href, rout, text, mark) {
+		chrome.extension.getBackgroundPage().hide(tabId, href, rout, text, mark, function() {
+			if(mark) {
+				paintSingleQuestion(makeQuestion(href, rout, text), 'hiddens', tabId)
+			}
+			else {
+				peelSingleQuestion(rout, "hiddens")
+			}
+			tellAllDisplays(rout, "hide", mark)
+		});
+	}
+	
+	function book(tabId, href, rout, text, mark) {
+		chrome.extension.getBackgroundPage().book(href, rout, text, mark, function() {
+			if(mark) {
+				paintSingleQuestion(makeQuestion(href, rout, text), 'bookmarks', tabId)
+			}
+			else {
+				peelSingleQuestion(rout, "bookmarks")
+			}
+			tellAllDisplays(rout, "book", mark)
+		});
+	}
+	
+	function makeQuestion(href, rout, text) {
+		var question = {}
+		question["href"] = href
+		question["rout"] = rout
+		question["text"] = text
+		return question
+	}
+	
+	function getValue(key) {
+		return chrome.extension.getBackgroundPage().getItem(key);
+	}
+	
+	function log(txt) {
+		if(logging) {
+			chrome.extension.getBackgroundPage().log(txt);
+		}
+	}
+	
+	function clearStorage() {
+		try {
+	        chrome.extension.getBackgroundPage().clearStorage();
+			peelStorage()
+	    } catch(e) {
+	        log("error while clearing local storage");
+	        log(e);
+	     }
+    }
+  </script>
+
+</head>
+<body>
+	<div id="header round">
+	  <a id="getquestions" href="#" class="nav">Current</a>
+	  <a id="getbookmarks" href="#" class="nav">Saved</a>
+	  <a id="gethiddens" href="#" class="nav">Hidden</a>
+	  <a id="clearButton" href="#" class="nav">Clear All</a>
+	</div>
+	<br />
+	<div id="boxTitles">
+		<span class="boxNav" style="margin-left: 2px">Save</span>
+		<span class="boxNav" style="margin-left: 286px">Hide</span>
+	</div>
+	<div id="line"></div>
+	<div id="container">
+	    <div id="bookmarks"></div>
+		<div id="hiddens"></div>
+	    <div id="questions"></div>
+	</div>
+</body>
+</html>
